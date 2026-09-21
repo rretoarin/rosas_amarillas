@@ -12,7 +12,6 @@
 <meta property="og:description" content="Un jardín de flores amarillas, solo para ti.">
 <meta property="og:type" content="website">
 
-<!-- Ícono de la pestaña -->
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌻</text></svg>">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -33,7 +32,7 @@
   *, *::before, *::after { box-sizing: inherit; }
   html, body {
     height: 100%; margin: 0; overflow: hidden;
-    overscroll-behavior: none; /* evita recargar la página al deslizar en Android */
+    overscroll-behavior: none;
   }
   body {
     background: var(--bg);
@@ -99,6 +98,7 @@
     animation: pop .8s cubic-bezier(.2, 1.4, .4, 1) forwards;
     animation-delay: calc(var(--d) + .7s);
   }
+  .leaf.blade { transform-origin: 50% 100%; animation-delay: calc(var(--d) + .3s); }
   @keyframes pop { to { transform: scale(1); } }
 
   .bloom {
@@ -107,7 +107,9 @@
     animation: open 1.6s cubic-bezier(.2, 1.3, .4, 1) forwards;
     animation-delay: calc(var(--d) + 1.3s);
   }
+  .bloom.tulip { transform: scale(0); animation-name: openTulip; }
   @keyframes open { to { transform: scale(1) rotate(0deg); } }
+  @keyframes openTulip { to { transform: scale(1); } }
 
   /* Pétalos que caen */
   .petal {
@@ -158,11 +160,46 @@
   .note .sign { font-family: "Parisienne", "Brush Script MT", cursive; font-size: clamp(1.8rem, 6vw, 2.4rem); margin-top: .3rem; }
   .note .hint { font-size: 1rem; font-style: italic; opacity: .75; margin-top: .8rem; }
 
-  /* Celular: mensaje más compacto */
+  /* Selector de flor y color */
+  .picker {
+    position: absolute; left: 50%; bottom: 12px; z-index: 70;
+    width: max-content; max-width: calc(100% - 16px);
+    display: flex; flex-direction: column; gap: 8px;
+    padding: 8px 10px 10px;
+    background: rgba(255, 249, 235, .86);
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    border-radius: 22px;
+    box-shadow: 0 8px 30px rgba(90, 48, 10, .2);
+    color: var(--ink-day);
+    opacity: 0; visibility: hidden; transform: translate(-50%, 24px);
+    transition: opacity 1.2s ease, transform 1.2s ease, visibility 1.2s;
+  }
+  .picker.show { opacity: 1; visibility: visible; transform: translate(-50%, 0); }
+  .picker .row { display: flex; gap: 4px; justify-content: center; }
+  .type {
+    font: inherit; font-size: 1rem; font-weight: 500; color: inherit;
+    background: transparent; border: 0; border-radius: 14px;
+    padding: 4px 8px 2px; min-width: 66px; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; gap: 1px;
+  }
+  .type[aria-pressed="true"] { background: rgba(255, 196, 0, .32); }
+  .type .mini { width: 36px; height: 36px; display: block; overflow: visible; }
+  .type .dice { width: 36px; height: 36px; display: grid; place-items: center; font-size: 1.5rem; line-height: 1; }
+  .swatch {
+    width: 34px; height: 34px; padding: 0; border-radius: 50%; cursor: pointer;
+    border: 2px solid rgba(90, 48, 10, .22);
+    transition: transform .15s ease;
+  }
+  .swatch[aria-pressed="true"] { box-shadow: 0 0 0 3px #fff9eb, 0 0 0 5px #8a4700; transform: scale(1.06); }
+  .swatch.mix { background: conic-gradient(#ffc400, #d8182f, #f27aa6, #a584dc, #ffffff, #ff8c1a, #ffc400); }
+  .type:focus-visible, .swatch:focus-visible { outline: 3px solid #8a4700; outline-offset: 2px; }
+
   @media (max-width: 600px) {
     .note { top: 2.5vh; }
     .note p { margin-bottom: .5rem; }
     .note .hint { margin-top: .4rem; }
+    .type { min-width: 58px; font-size: .92rem; padding: 4px 4px 2px; }
+    .swatch { width: 31px; height: 31px; }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -174,36 +211,15 @@
 </style>
 </head>
 <body>
-<!-- Degradados compartidos por todas las flores -->
+<!-- Degradados: los de color se generan en JavaScript -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
-  <defs>
-    <linearGradient id="gPetal" x1="0" y1="1" x2="0" y2="0">
-      <stop offset="0" stop-color="#e89400"/>
-      <stop offset=".35" stop-color="#ffc400"/>
-      <stop offset="1" stop-color="#ffe14d"/>
-    </linearGradient>
-    <linearGradient id="gPetalBack" x1="0" y1="1" x2="0" y2="0">
-      <stop offset="0" stop-color="#b86f00"/>
-      <stop offset="1" stop-color="#f0a800"/>
-    </linearGradient>
+  <defs id="defs">
     <radialGradient id="gDisc">
       <stop offset="0" stop-color="#4a4a14"/>
       <stop offset=".35" stop-color="#3a220a"/>
       <stop offset=".85" stop-color="#241204"/>
       <stop offset="1" stop-color="#5e3a10"/>
     </radialGradient>
-    <linearGradient id="gRoseOut" x1="0" y1="1" x2="0" y2="0">
-      <stop offset="0" stop-color="#e3a000"/>
-      <stop offset="1" stop-color="#ffe372"/>
-    </linearGradient>
-    <linearGradient id="gRoseMid" x1="0" y1="1" x2="0" y2="0">
-      <stop offset="0" stop-color="#f0b000"/>
-      <stop offset="1" stop-color="#ffdd55"/>
-    </linearGradient>
-    <linearGradient id="gRoseIn" x1="0" y1="1" x2="0" y2="0">
-      <stop offset="0" stop-color="#ffc61a"/>
-      <stop offset="1" stop-color="#fff2a8"/>
-    </linearGradient>
     <linearGradient id="gLeaf" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#5f9a3a"/>
       <stop offset="1" stop-color="#2f5a1e"/>
@@ -239,8 +255,26 @@
     <p>No quise darte un ramo. Quise sembrarte un jardín entero, uno que no se marchita y que vuelve a florecer cada vez que lo abres.</p>
     <p>Gracias por llenar mis días de luz. Te amo.</p>
     <p class="sign">Ruben</p>
-    <p class="hint">Toca en cualquier lugar y nacerá una flor más.</p>
+    <p class="hint">Elige una flor y un color, y toca donde quieras para sembrarla.</p>
   </section>
+
+  <nav class="picker" id="picker" aria-label="Elige tu flor">
+    <div class="row" role="group" aria-label="Tipo de flor">
+      <button class="type" type="button" data-type="sunflower" aria-pressed="true"><svg class="mini" data-mini="sunflower" viewBox="-70 -70 140 140"></svg>Girasol</button>
+      <button class="type" type="button" data-type="rose" aria-pressed="false"><svg class="mini" data-mini="rose" viewBox="-44 -44 88 88"></svg>Rosa</button>
+      <button class="type" type="button" data-type="tulip" aria-pressed="false"><svg class="mini" data-mini="tulip" viewBox="-40 -48 80 80"></svg>Tulipán</button>
+      <button class="type" type="button" data-type="random" aria-pressed="false"><span class="dice" aria-hidden="true">✦</span>Al azar</button>
+    </div>
+    <div class="row" role="group" aria-label="Color">
+      <button class="swatch" type="button" data-color="amarillo" aria-label="Amarillo" aria-pressed="true" style="background:#ffc400"></button>
+      <button class="swatch" type="button" data-color="rojo" aria-label="Rojo" aria-pressed="false" style="background:#d8182f"></button>
+      <button class="swatch" type="button" data-color="rosado" aria-label="Rosado" aria-pressed="false" style="background:#f27aa6"></button>
+      <button class="swatch" type="button" data-color="lila" aria-label="Lila" aria-pressed="false" style="background:#a584dc"></button>
+      <button class="swatch" type="button" data-color="blanco" aria-label="Blanco" aria-pressed="false" style="background:#fbf8f2"></button>
+      <button class="swatch" type="button" data-color="naranja" aria-label="Naranja" aria-pressed="false" style="background:#ff8c1a"></button>
+      <button class="swatch mix" type="button" data-color="mix" aria-label="Mezclar colores" aria-pressed="false"></button>
+    </div>
+  </nav>
 </main>
 
 <script>
@@ -249,11 +283,12 @@
   const scene = document.getElementById("scene");
   const garden = document.getElementById("garden");
   const note = document.getElementById("note");
+  const picker = document.getElementById("picker");
   const seedBtn = document.getElementById("seed");
+  const defs = document.getElementById("defs");
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const rand = (a, b) => a + Math.random() * (b - a);
-
-  // En celular se dibuja un poco menos de detalle para que todo vaya fluido
+  const pick = arr => arr[Math.floor(Math.random() * arr.length)];
   const isPhone = () => window.innerWidth < 600;
 
   function el(tag, attrs, parent) {
@@ -262,6 +297,32 @@
     if (parent) parent.appendChild(node);
     return node;
   }
+
+  /* Paleta de colores: deep (sombra), dark, mid, light (brillo) */
+  const COLORS = {
+    amarillo: { deep: "#b86f00", dark: "#e89400", mid: "#ffc400", light: "#ffe14d" },
+    rojo:     { deep: "#5e000e", dark: "#9e0019", mid: "#d8182f", light: "#ff5a6a" },
+    rosado:   { deep: "#a82a60", dark: "#d9467f", mid: "#f27aa6", light: "#ffc6da" },
+    lila:     { deep: "#4e3180", dark: "#7453ae", mid: "#a584dc", light: "#ddcdf7" },
+    blanco:   { deep: "#b9b0a0", dark: "#ddd6c8", mid: "#f4f0e8", light: "#ffffff" },
+    naranja:  { deep: "#a54300", dark: "#e06a00", mid: "#ff8c1a", light: "#ffc27a" }
+  };
+  const COLOR_KEYS = Object.keys(COLORS);
+
+  function linear(id, stops) {
+    const g = el("linearGradient", { id, x1: 0, y1: 1, x2: 0, y2: 0 }, defs);
+    stops.forEach(([o, c]) => el("stop", { offset: o, "stop-color": c }, g));
+  }
+  COLOR_KEYS.forEach(k => {
+    const c = COLORS[k];
+    linear(`gPetal-${k}`,     [[0, c.dark], [.35, c.mid], [1, c.light]]);
+    linear(`gPetalBack-${k}`, [[0, c.deep], [1, c.dark]]);
+    linear(`gRoseOut-${k}`,   [[0, c.dark], [1, c.light]]);
+    linear(`gRoseMid-${k}`,   [[0, c.deep], [1, c.mid]]);
+    linear(`gRoseIn-${k}`,    [[0, c.mid], [1, c.light]]);
+    linear(`gTulip-${k}`,     [[0, c.deep], [.45, c.mid], [1, c.light]]);
+    linear(`gTulipBack-${k}`, [[0, c.deep], [1, c.dark]]);
+  });
 
   /* Estrellas */
   const stars = document.getElementById("stars");
@@ -276,91 +337,102 @@
     stars.appendChild(s);
   }
 
-  /* Pétalo de girasol: largo y terminado en punta */
+  /* ---------- Girasol ---------- */
   function sunPetal(len, w) {
     const b = 22;
     return `M0,-${b} C${-w},-${b + 8} ${-w * 0.95},-${len - 16} 0,-${len} ` +
            `C${w * 0.95},-${len - 16} ${w},-${b + 8} 0,-${b}Z`;
   }
-
-  /* Girasol: 3 coronas de pétalos + disco de semillas en espiral de Fibonacci */
-  function sunflowerHead(g) {
+  function sunflowerHead(g, k, seedCount) {
+    const c = COLORS[k];
     for (let i = 0; i < 24; i++) {
-      el("path", {
-        d: sunPetal(rand(60, 68), rand(7, 8.5)), fill: "url(#gPetalBack)",
-        transform: `rotate(${i * 15 + 7.5 + rand(-3, 3)})`
-      }, g);
+      el("path", { d: sunPetal(rand(60, 68), rand(7, 8.5)), fill: `url(#gPetalBack-${k})`,
+        transform: `rotate(${i * 15 + 7.5 + rand(-3, 3)})` }, g);
     }
     for (let i = 0; i < 22; i++) {
-      el("path", {
-        d: sunPetal(rand(56, 64), rand(7.5, 9)), fill: "url(#gPetal)",
-        stroke: "rgba(190,110,0,.35)", "stroke-width": .6,
-        transform: `rotate(${i * (360 / 22) + rand(-4, 4)})`
-      }, g);
+      el("path", { d: sunPetal(rand(56, 64), rand(7.5, 9)), fill: `url(#gPetal-${k})`,
+        stroke: c.deep, "stroke-opacity": .35, "stroke-width": .6,
+        transform: `rotate(${i * (360 / 22) + rand(-4, 4)})` }, g);
     }
     for (let i = 0; i < 20; i++) {
       const len = rand(46, 54);
-      const r = i * 18 + 9 + rand(-4, 4);
-      const pg = el("g", { transform: `rotate(${r})` }, g);
-      el("path", { d: sunPetal(len, rand(6.5, 8)), fill: "url(#gPetal)", stroke: "rgba(190,110,0,.35)", "stroke-width": .6 }, pg);
-      el("path", { d: `M0,-24 L0,-${len - 8}`, stroke: "rgba(200,120,0,.45)", "stroke-width": .7, fill: "none" }, pg);
+      const pg = el("g", { transform: `rotate(${i * 18 + 9 + rand(-4, 4)})` }, g);
+      el("path", { d: sunPetal(len, rand(6.5, 8)), fill: `url(#gPetal-${k})`, stroke: c.deep, "stroke-opacity": .35, "stroke-width": .6 }, pg);
+      el("path", { d: `M0,-24 L0,-${len - 8}`, stroke: c.deep, "stroke-opacity": .4, "stroke-width": .7, fill: "none" }, pg);
     }
     el("circle", { r: 27, fill: "url(#gDisc)" }, g);
     el("circle", { r: 26, fill: "none", stroke: "#8a5a1c", "stroke-width": 2.2, opacity: .8 }, g);
-
-    const seeds = isPhone() ? 120 : 190;
-    const step = 26 / Math.sqrt(seeds);
-    for (let i = 1; i < seeds; i++) {
+    const step = 26 / Math.sqrt(seedCount);
+    for (let i = 1; i < seedCount; i++) {
       const r = step * Math.sqrt(i);
       const a = i * 137.508 * Math.PI / 180;
       el("circle", {
         cx: (r * Math.cos(a)).toFixed(2), cy: (r * Math.sin(a)).toFixed(2),
-        r: i < seeds * 0.1 ? .8 : (isPhone() ? 1.3 : 1.05),
+        r: i < seedCount * 0.1 ? .8 : (seedCount < 150 ? 1.3 : 1.05),
         fill: i % 3 === 0 ? "#7a4a16" : "#1a0c02", opacity: .85
       }, g);
     }
-    el("ellipse", { cx: -8, cy: -9, rx: 9, ry: 6, fill: "#fff", opacity: .06 }, g);
   }
 
-  /* Rosa amarilla */
-  function roseHead(g) {
+  /* ---------- Rosa ---------- */
+  function roseHead(g, k) {
+    const c = COLORS[k];
     const petal = "M0,0 C-20,-6 -24,-34 0,-40 C24,-34 20,-6 0,0Z";
-    const layers = [
-      { n: 5, s: 1, off: 0, fill: "url(#gRoseOut)" },
-      { n: 5, s: .74, off: 36, fill: "url(#gRoseMid)" },
-      { n: 4, s: .5, off: 15, fill: "url(#gRoseIn)" }
-    ];
-    layers.forEach(L => {
+    [
+      { n: 5, s: 1, off: 0, fill: `url(#gRoseOut-${k})` },
+      { n: 5, s: .74, off: 36, fill: `url(#gRoseMid-${k})` },
+      { n: 4, s: .5, off: 15, fill: `url(#gRoseIn-${k})` }
+    ].forEach(L => {
       for (let i = 0; i < L.n; i++) {
-        el("path", {
-          d: petal, fill: L.fill, stroke: "rgba(170,105,0,.45)", "stroke-width": .9,
-          transform: `rotate(${i * (360 / L.n) + L.off}) scale(${L.s})`
-        }, g);
+        el("path", { d: petal, fill: L.fill, stroke: c.deep, "stroke-opacity": .45, "stroke-width": .9,
+          transform: `rotate(${i * (360 / L.n) + L.off}) scale(${L.s})` }, g);
       }
     });
     el("path", {
       d: "M0,0 a3,3 0 1,1 4.5,-1.5 a6,6 0 1,1 -9,3 a9.5,9.5 0 1,1 13.5,-4.5",
-      fill: "none", stroke: "#c98700", "stroke-width": 1.6, "stroke-linecap": "round"
+      fill: "none", stroke: c.deep, "stroke-width": 1.6, "stroke-linecap": "round"
     }, g);
   }
 
-  /* Hojas: grandes tipo corazón para girasol, pequeñas para rosa */
-  function leaf(parent, big) {
+  /* ---------- Tulipán ---------- */
+  function tulipHead(g, k) {
+    const c = COLORS[k];
+    const side = "M0,22 C-24,20 -30,-6 -24,-34 C-14,-24 -4,-12 0,22Z";
+    el("path", { d: "M0,22 C-14,10 -16,-20 0,-40 C16,-20 14,10 0,22Z", fill: `url(#gTulipBack-${k})` }, g);
+    el("path", { d: side, fill: `url(#gTulip-${k})`, stroke: c.deep, "stroke-opacity": .4, "stroke-width": .8 }, g);
+    el("path", { d: side, fill: `url(#gTulip-${k})`, stroke: c.deep, "stroke-opacity": .4, "stroke-width": .8, transform: "scale(-1,1)" }, g);
+    el("path", { d: "M0,24 C-18,20 -20,-10 -9,-32 Q0,-24 9,-32 C20,-10 18,20 0,24Z",
+      fill: `url(#gTulip-${k})`, stroke: c.deep, "stroke-opacity": .45, "stroke-width": .8 }, g);
+    el("path", { d: "M0,20 C-2,6 -2,-10 0,-22", stroke: c.light, "stroke-opacity": .5, "stroke-width": 1.2, fill: "none" }, g);
+  }
+
+  function drawHead(g, type, k, seedCount) {
+    if (type === "rose") roseHead(g, k);
+    else if (type === "tulip") tulipHead(g, k);
+    else sunflowerHead(g, k, seedCount);
+  }
+
+  /* ---------- Hojas ---------- */
+  function leaf(parent, type) {
     const g = el("g", { class: "leaf" }, parent);
-    if (big) {
+    if (type === "sunflower") {
       el("path", { d: "M0,0 C6,-22 40,-30 66,-10 C58,10 26,20 0,0Z", fill: "url(#gLeaf)" }, g);
       el("path", { d: "M2,-1 C22,-10 42,-12 62,-10", stroke: "#a7c98a", "stroke-width": 1, fill: "none", opacity: .6 }, g);
     } else {
       el("path", { d: "M0,0 C10,-11 30,-11 42,0 C30,10 10,10 0,0Z", fill: "url(#gLeaf)" }, g);
     }
   }
+  function tulipBlade(parent, len) {
+    const g = el("g", { class: "leaf blade" }, parent);
+    el("path", { d: `M-4,0 C-12,${-len * 0.35} -6,${-len * 0.75} 6,${-len} C4,${-len * 0.7} 6,${-len * 0.3} 5,0Z`, fill: "url(#gLeaf)" }, g);
+  }
 
-  /* Crea una flor completa */
+  /* ---------- Flor completa ---------- */
   function makeFlower(opts) {
-    const { type, x, h, delay, scale, z } = opts;
-    const isSun = type === "sunflower";
+    const { type, color, x, h, delay, scale, z } = opts;
+    const isSun = type === "sunflower", isTulip = type === "tulip";
     const w = isSun ? 200 : 130;
-    const top = isSun ? 85 : 55;
+    const top = isSun ? 85 : 60;
     const svg = el("svg", {
       class: "flower",
       viewBox: `${-w / 2} ${-h - top} ${w} ${h + top}`,
@@ -372,52 +444,60 @@
     svg.style.setProperty("--d", delay + "s");
     svg.style.setProperty("--sd", rand(-5, 0) + "s");
 
-    const tip = rand(-14, 14), ctrl = rand(-22, 22);
+    const tip = rand(-14, 14), ctrl = isTulip ? rand(-12, 12) : rand(-22, 22);
     const stem = el("path", { class: "stem", d: `M0,0 Q${ctrl},${-h * 0.55} ${tip},${-h}`, pathLength: 1 }, svg);
-    stem.style.strokeWidth = isSun ? 8 : 5;
+    stem.style.strokeWidth = isSun ? 8 : isTulip ? 4.5 : 5;
 
-    const spots = h > 140 ? [0.3, 0.55] : [0.4];
-    spots.forEach((t, i) => {
-      const lx = 2 * (1 - t) * t * ctrl + t * t * tip;
-      const side = i % 2 === 0 ? 1 : -1;
-      const wrap = el("g", { transform: `translate(${lx.toFixed(1)},${(-h * t).toFixed(1)}) scale(${side},1) rotate(${isSun ? -12 : -28})` }, svg);
-      leaf(wrap, isSun);
-    });
+    if (isTulip) {
+      const len = Math.min(h * 0.55, 110);
+      tulipBlade(el("g", { transform: "rotate(-14)" }, svg), len);
+      tulipBlade(el("g", { transform: "scale(-1,1) rotate(-10)" }, svg), len * 0.85);
+    } else {
+      const spots = h > 140 ? [0.3, 0.55] : [0.4];
+      spots.forEach((t, i) => {
+        const lx = 2 * (1 - t) * t * ctrl + t * t * tip;
+        const side = i % 2 === 0 ? 1 : -1;
+        const wrap = el("g", { transform: `translate(${lx.toFixed(1)},${(-h * t).toFixed(1)}) scale(${side},1) rotate(${isSun ? -12 : -28})` }, svg);
+        leaf(wrap, type);
+      });
+    }
 
-    const tilt = isSun ? tip * 0.9 : 0;
-    const head = el("g", { transform: `translate(${tip.toFixed(1)},${-h}) rotate(${tilt.toFixed(1)}) scale(1,${isSun ? .93 : 1})` }, svg);
-    const bloom = el("g", { class: "bloom" }, head);
-    if (isSun) sunflowerHead(bloom); else roseHead(bloom);
+    const tilt = isSun ? tip * 0.9 : isTulip ? tip * 0.4 : 0;
+    const hs = isTulip ? 1.25 : 1;
+    const head = el("g", { transform: `translate(${tip.toFixed(1)},${-h}) rotate(${tilt.toFixed(1)}) scale(${hs},${isSun ? .93 : hs})` }, svg);
+    const bloom = el("g", { class: isTulip ? "bloom tulip" : "bloom" }, head);
+    drawHead(bloom, type, color, isPhone() ? 120 : 190);
 
     garden.appendChild(svg);
     return svg;
   }
 
-  /* Jardín: girasoles altos atrás, mezcla adelante.
-     En pantalla vertical (celular) las flores son más bajas para no tapar el mensaje. */
+  /* ---------- Jardín inicial (todo amarillo, como el día lo pide) ---------- */
+  function baseScale() {
+    const W = window.innerWidth, V = window.innerHeight;
+    return V / W > 1.2 ? 0.62 : Math.min(1, Math.max(0.55, W / 1000));
+  }
   function plantGarden(instant) {
     const W = window.innerWidth, V = window.innerHeight;
     const portrait = V / W > 1.2;
-    const base = portrait ? 0.62 : Math.min(1, Math.max(0.55, W / 1000));
+    const base = baseScale();
     const rows = [
       { count: Math.max(4, Math.round(W / 95)), hMin: portrait ? .24 : .32, hMax: portrait ? .34 : .48, sMin: .85, sMax: 1, z: 5, roseChance: 0 },
-      { count: Math.max(4, Math.round(W / 85)), hMin: portrait ? .1 : .14, hMax: portrait ? .2 : .28, sMin: .85, sMax: 1.05, z: 20, roseChance: .6 }
+      { count: Math.max(4, Math.round(W / 85)), hMin: portrait ? .12 : .14, hMax: portrait ? .2 : .28, sMin: .85, sMax: 1.05, z: 20, roseChance: .6 }
     ];
     rows.forEach(row => {
       for (let i = 0; i < row.count; i++) {
         const x = ((i + 0.5) / row.count) * W + rand(-14, 14);
         const scale = base * rand(row.sMin, row.sMax);
-        const px = V * rand(row.hMin, row.hMax);
-        const h = Math.max(60, px / scale);
+        const h = Math.max(60, (V * rand(row.hMin, row.hMax)) / scale);
         const delay = instant ? 0 : (Math.abs(x - W / 2) / W) * 2.2 + rand(0, .5) + (row.z === 5 ? 0 : .5);
         const type = Math.random() < row.roseChance ? "rose" : "sunflower";
-        makeFlower({ type, x, h, delay, scale, z: row.z });
+        makeFlower({ type, color: "amarillo", x, h, delay, scale, z: row.z });
       }
     });
   }
 
-  /* Pétalos que caen */
-  let petalTimer = null;
+  /* ---------- Pétalos que caen ---------- */
   function dropPetal() {
     if (scene.querySelectorAll(".petal").length > 18) return;
     const p = document.createElement("div");
@@ -430,20 +510,44 @@
     scene.appendChild(p);
   }
 
-  /* Tocar para sembrar una flor justo donde se toca */
+  /* ---------- Selector de flor y color ---------- */
+  const choice = { type: "sunflower", color: "amarillo" };
+
+  function drawMinis() {
+    const k = choice.color === "mix" ? "amarillo" : choice.color;
+    picker.querySelectorAll("[data-mini]").forEach(svg => {
+      svg.innerHTML = "";
+      const g = el("g", {}, svg);
+      drawHead(g, svg.dataset.mini, k, 60);
+    });
+  }
+  function select(group, attr, value) {
+    picker.querySelectorAll(group).forEach(b => b.setAttribute("aria-pressed", String(b.dataset[attr] === value)));
+  }
+  picker.addEventListener("click", e => {
+    const t = e.target.closest(".type");
+    const s = e.target.closest(".swatch");
+    if (t) { choice.type = t.dataset.type; select(".type", "type", choice.type); }
+    if (s) { choice.color = s.dataset.color; select(".swatch", "color", choice.color); drawMinis(); }
+    if ((t || s) && navigator.vibrate) navigator.vibrate(8);
+  });
+  drawMinis();
+
+  /* ---------- Tocar para sembrar ---------- */
   let planted = [];
-  let bloomed = false, nextType = "sunflower";
+  let bloomed = false;
   scene.addEventListener("pointerdown", e => {
-    if (!bloomed || e.target.closest("button")) return;
-    const W = window.innerWidth, V = window.innerHeight;
-    const scale = (V / W > 1.2 ? 0.62 : Math.min(1, Math.max(0.55, W / 1000))) * rand(.85, 1);
+    if (!bloomed || e.target.closest("button, .picker")) return;
+    const V = window.innerHeight;
+    const scale = baseScale() * rand(.85, 1);
     const groundPx = V * 0.05;
     const h = Math.min(Math.max((V - e.clientY - groundPx) / scale, 50), (V * .8) / scale);
-    const f = makeFlower({ type: nextType, x: e.clientX, h, delay: 0, scale, z: 30 });
-    nextType = nextType === "rose" ? "sunflower" : "rose";
+    const type = choice.type === "random" ? pick(["sunflower", "rose", "tulip"]) : choice.type;
+    const color = choice.color === "mix" ? pick(COLOR_KEYS) : choice.color;
+    const f = makeFlower({ type, color, x: e.clientX, h, delay: 0, scale, z: 30 });
     planted.push(f);
     if (planted.length > (isPhone() ? 20 : 40)) planted.shift().remove();
-    if (navigator.vibrate) navigator.vibrate(12); // pequeña vibración en Android
+    if (navigator.vibrate) navigator.vibrate(12);
   });
 
   seedBtn.addEventListener("click", () => {
@@ -452,13 +556,11 @@
     scene.classList.add("bloomed");
     if (navigator.vibrate) navigator.vibrate([20, 60, 20]);
     plantGarden(false);
-    setTimeout(() => note.classList.add("show"), reduceMotion ? 0 : 4200);
-    if (!reduceMotion) {
-      setTimeout(() => { petalTimer = setInterval(dropPetal, 650); }, 3000);
-    }
+    setTimeout(() => { note.classList.add("show"); picker.classList.add("show"); }, reduceMotion ? 0 : 4200);
+    if (!reduceMotion) setTimeout(() => setInterval(dropPetal, 650), 3000);
   });
 
-  /* Si gira el celular, se vuelve a acomodar el jardín */
+  /* ---------- Si gira el celular, se reacomoda el jardín ---------- */
   let lastW = window.innerWidth, resizeTimer = null;
   window.addEventListener("resize", () => {
     if (!bloomed || Math.abs(window.innerWidth - lastW) < 50) return;
